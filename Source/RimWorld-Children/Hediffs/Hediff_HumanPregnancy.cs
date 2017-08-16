@@ -13,10 +13,10 @@ namespace RimWorldChildren
 {
 	public class Hediff_HumanPregnancy : HediffWithComps
 	{
-		//
-		// Static Fields
-		//
-
+        //
+        // Static Fields
+        //
+        private const int TicksPerDay = 60000;
 		private const int MiscarryCheckInterval = 1000;
 
 		private const float MTBMiscarryStarvingDays = 0.5f;
@@ -188,8 +188,24 @@ namespace RimWorldChildren
 				}
 			}
 
-			// Surname passing
-			string last_name = null;
+            // Todo: Perhaps add a way to pass on the parent's body build
+            // Best way to do it might be to represent thin/fat/normal/hulk
+            // as a pair of two values, strength and weight
+            // For example, if the mother has an average body type, she would
+            // have a strength of .5f and a weight of .5f. A fat pawn would have
+            // a strength of .5f and a weight of .75f. A thin pawn would have a
+            // strength of .25f and a weight of .25f. A hulk pawn would have 
+            // strength of .75f and weight of .75f
+            List<float> strength_pool = new List<float>();
+            List<float> weight_pool = new List<float>();
+
+            // Get mother and fathers info here if possible
+
+            float avg_strength = strength_pool.Average();
+            float avg_weight = weight_pool.Average();
+
+            // Surname passing
+            string last_name = null;
 			if (mother.RaceProps.Humanlike) {
 				if (father == null) {
 					last_name = NameTriple.FromString (mother.Name.ToStringFull).Last;
@@ -407,7 +423,7 @@ namespace RimWorldChildren
 			StringBuilder stringBuilder = new StringBuilder ();
 			stringBuilder.Append (base.DebugString ());
 			stringBuilder.AppendLine ("Gestation progress: " + this.GestationProgress.ToStringPercent ());
-			stringBuilder.AppendLine ("Time left: " + ((int)((1 - this.GestationProgress) * this.pawn.RaceProps.gestationPeriodDays * 60000)).ToStringTicksToPeriod (true));
+			stringBuilder.AppendLine ("Time left: " + ((int)((1 - this.GestationProgress) * this.pawn.RaceProps.gestationPeriodDays * TicksPerDay)).ToStringTicksToPeriod (true));
 			return stringBuilder.ToString ();
 		}
 
@@ -469,7 +485,7 @@ namespace RimWorldChildren
 			
 			this.ageTicks++;
 			if (this.pawn.IsHashIntervalTick (1000)) {
-				if (this.pawn.needs.food != null && this.pawn.needs.food.CurCategory == HungerCategory.Starving && Rand.MTBEventOccurs (0.5f, 60000, 1000)) {
+				if (this.pawn.needs.food != null && this.pawn.needs.food.CurCategory == HungerCategory.Starving && Rand.MTBEventOccurs (0.5f, TicksPerDay, MiscarryCheckInterval)) {
 					if (this.Visible && PawnUtility.ShouldSendNotificationAbout (this.pawn)) {
 						Messages.Message ("MessageMiscarriedStarvation".Translate (new object[] {
 							this.pawn.LabelIndefinite ()
@@ -478,7 +494,7 @@ namespace RimWorldChildren
 					Miscarry (false);
 					return;
 				}
-				if (this.IsSeverelyWounded && Rand.MTBEventOccurs (0.5f, 60000, 1000)) {
+				if (this.IsSeverelyWounded && Rand.MTBEventOccurs (0.5f, TicksPerDay, MiscarryCheckInterval)) {
 					if (this.Visible && PawnUtility.ShouldSendNotificationAbout (this.pawn)) {
 						Messages.Message ("MessageMiscarriedPoorHealth".Translate (new object[] {
 							this.pawn.LabelIndefinite ()
@@ -488,13 +504,23 @@ namespace RimWorldChildren
 					return;
 				}
 			}
-			GestationProgress += 1 / (pawn.RaceProps.gestationPeriodDays * 60000);
+			GestationProgress += 1.0f / (pawn.RaceProps.gestationPeriodDays * TicksPerDay);
 
-			// Discover from 
+			// Check if pregnancy is far enough along to "show" for the body type
 			if (!is_discovered) {
-				if ((GestationProgress > 0.25f && pawn.story.bodyType != BodyType.Fat) || (GestationProgress > 0.1f && pawn.story.bodyType == BodyType.Thin)) {
-					DiscoverPregnancy ();
-				}
+                if (pawn.story.bodyType != BodyType.Fat) {
+                    // Fat pawns will never get their pregnancy discovered
+                    // Todo: Ask if bug? Realistically, even fat pawns should start to show sometime
+                    // Possibly: Thin: .375f, Normal: 0.389f, Fat/Hulk: .50f
+                    // Got the numbers by dividing the average show time (in weeks) per body type by 36
+                    // (36 weeks being the real human gestation period)
+                    // https://www.momtricks.com/pregnancy/when-do-you-start-showing-in-pregnancy/
+                }
+                else if ((GestationProgress > 0.1f && pawn.story.bodyType == BodyType.Thin) ||
+                    GestationProgress > 0.25f) {
+                    // Thin pawns get discovered more quickly
+                    DiscoverPregnancy();
+                }
 			}
 
 			// Final stage of pregnancy

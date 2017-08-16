@@ -36,7 +36,7 @@ namespace RimWorldChildren
 		}
 
 		internal static void TryToImpregnate(Pawn initiator, Pawn partner){
-
+			// Todo: Lesbian/gay couples are not accounted for. Those cases should never result in pregnancy
 			// default
 			Pawn male = initiator;
 			Pawn female = partner;
