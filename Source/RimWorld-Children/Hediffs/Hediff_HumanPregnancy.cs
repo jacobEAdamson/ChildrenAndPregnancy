@@ -147,8 +147,6 @@ namespace RimWorldChildren
 		//
 		// Methods
 		//
-
-		private void C(int l) { Log.Warning((l++).ToString()); }
 		public void DoBirthSpawn (Pawn mother, Pawn father, float chance_successful = 1.0f)
 		{
 			if (mother == null) {
